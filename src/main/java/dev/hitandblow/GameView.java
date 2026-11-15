@@ -10,6 +10,10 @@ public final class GameView implements InventoryHolder {
     /** この画面を見ているプレイヤーの番号（0 or 1） */
     public final int viewer;
     private final Inventory inventory;
+    /** true なら履歴画面を表示中（同じインベントリの中身を入れ替えて表示する） */
+    boolean history;
+    /** 履歴画面で、新しい側から何件ずらして表示しているか */
+    int historyOffset;
 
     GameView(Game game, int viewer) {
         this.game = game;

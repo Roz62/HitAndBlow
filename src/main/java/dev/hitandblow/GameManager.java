@@ -17,8 +17,8 @@ import java.util.UUID;
 /** 募集と進行中ゲームの管理。1人が関われるのは募集1つ or ゲーム1つまで。 */
 public final class GameManager {
 
-    /** 募集。target が null なら全体向け、それ以外は招待相手だけが参加できる。bet は1人あたりの賭け金 */
-    record Recruit(UUID host, String hostName, UUID target, String targetName, long bet, long expiresAt, BukkitTask expiry) {}
+    /** 募集。target が null なら全体向け、それ以外は招待相手だけが参加できる */
+    record Recruit(UUID host, String hostName, UUID target, String targetName, long expiresAt, BukkitTask expiry) {}
 
     private final HitAndBlowPlugin plugin;
     private final Map<UUID, Recruit> recruits = new LinkedHashMap<>();   // key: 募集者
@@ -48,17 +48,13 @@ public final class GameManager {
         return list;
     }
 
-    static String betLabel(long bet) {
-        return bet > 0 ? "§6賭け金 " + Bank.yen(bet) : "§7賭け金なし";
-    }
-
     // ── 募集 ──
 
     /** 募集メッセージを出し直す残り秒数（出した直後の1回と合わせて計3回） */
     private static final int[] REMIND_AT = {40, 20};
 
     /** @param target null なら全体向け */
-    public void recruit(Player host, Player target, long bet) {
+    public void recruit(Player host, Player target) {
         UUID id = host.getUniqueId();
         int seconds = plugin.recruitSeconds();
         long expiresAt = System.currentTimeMillis() + seconds * 1000L;
@@ -72,7 +68,7 @@ public final class GameManager {
             for (int at : REMIND_AT) if (left[0] == at) announce(r, at);
         }, 20L, 20L);
         Recruit r = new Recruit(id, host.getName(), target == null ? null : target.getUniqueId(),
-                target == null ? null : target.getName(), bet, expiresAt, task);
+                target == null ? null : target.getName(), expiresAt, task);
         recruits.put(id, r);
         announce(r, seconds);
     }
@@ -80,7 +76,7 @@ public final class GameManager {
     /** 募集メッセージ。募集者本人にも同じ形で出す（「募集を出しました」は出さない） */
     private void announce(Recruit r, int secondsLeft) {
         Component join = joinButton(r.hostName());
-        String info = " §f(" + betLabel(r.bet()) + "§f) §7（残り" + secondsLeft + "秒） ";
+        String info = " §7（残り" + secondsLeft + "秒） ";
         if (r.target() == null) {
             Component msg = Items.text(Msg.PREFIX + "§e" + r.hostName() + " §fが§bヒット＆ブロー§fの対戦相手を募集中！" + info).append(join);
             for (Player p : Bukkit.getOnlinePlayers()) p.sendMessage(msg);
@@ -135,26 +131,8 @@ public final class GameManager {
         if (r.target() != null && !r.target().equals(joiner.getUniqueId())) return "§cその募集は招待された人しか参加できません。";
         if (isBusy(joiner.getUniqueId())) return "§cあなたは既に募集中かゲーム中です。";
 
-        // 賭け金：2人から先に預かる（勝者に2人分、勝敗なしなら返金）
-        long bet = r.bet();
-        if (bet > 0) {
-            Bank bank = plugin.bank();
-            if (!bank.available()) return "§c経済プラグインが見つからないため、賭け金ありのゲームは開始できません。";
-            if (!bank.has(joiner, bet)) return "§c所持金が足りません（" + betLabel(bet) + "§c）。";
-            if (!bank.has(host, bet)) {
-                cancelRecruit(host.getUniqueId());
-                host.sendMessage(Items.text(Msg.PREFIX + "§c所持金が賭け金に足りないため、募集を取り消しました。"));
-                return "§c" + host.getName() + " の所持金が足りないため、開始できませんでした。";
-            }
-            if (!bank.withdraw(host, bet)) return "§c賭け金の引き落としに失敗しました。";
-            if (!bank.withdraw(joiner, bet)) {
-                bank.deposit(host, bet);
-                return "§c賭け金の引き落としに失敗しました。";
-            }
-        }
-
         cancelRecruit(host.getUniqueId());
-        Game game = new Game(plugin, host, joiner, bet);
+        Game game = new Game(plugin, host, joiner);
         games.put(host.getUniqueId(), game);
         games.put(joiner.getUniqueId(), game);
         game.start();
@@ -168,7 +146,7 @@ public final class GameManager {
         for (UUID id : game.players()) games.remove(id, game);
     }
 
-    /** 全ゲームを勝敗なしで終了（賭け金は返金）し、募集もすべて取り消す。/hb off とプラグイン停止時 */
+    /** 全ゲームを勝敗なしで終了し、募集もすべて取り消す。/hb off とプラグイン停止時 */
     void stopAll(String reason) {
         for (Game g : new ArrayList<>(games.values())) g.finish(-1, reason);
         for (Recruit r : recruits.values()) {

@@ -2,14 +2,14 @@ package dev.hitandblow;
 
 import org.bukkit.Material;
 
-/** ゲームで使う6色。黄緑は「緑」、灰は「黒」として扱う。 */
+/** ゲームで使う6色。黄緑は「緑」として扱う。（黒は青と頭文字 B が被るので紫にした） */
 public enum HbColor {
     RED("赤", "§c", Material.RED_CONCRETE, Material.RED_STAINED_GLASS),
     BLUE("青", "§9", Material.BLUE_CONCRETE, Material.BLUE_STAINED_GLASS),
     YELLOW("黄", "§e", Material.YELLOW_CONCRETE, Material.YELLOW_STAINED_GLASS),
     GREEN("緑", "§a", Material.LIME_CONCRETE, Material.LIME_STAINED_GLASS),
     WHITE("白", "§f", Material.WHITE_CONCRETE, Material.WHITE_STAINED_GLASS),
-    BLACK("黒", "§8", Material.GRAY_CONCRETE, Material.GRAY_STAINED_GLASS);
+    PURPLE("紫", "§5", Material.PURPLE_CONCRETE, Material.PURPLE_STAINED_GLASS);
 
     public final String label;
     public final String chat;

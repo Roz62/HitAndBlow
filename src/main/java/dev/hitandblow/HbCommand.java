@@ -24,14 +24,13 @@ public final class HbCommand implements TabExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String sub = args.length == 0 ? "help" : args[0].toLowerCase(Locale.ROOT);
         switch (sub) {
-            case "start" -> start(sender, args);
+            case "start" -> start(sender);
             case "invite" -> invite(sender, args);
             case "join" -> join(sender, args);
             case "open" -> open(sender);
             case "list" -> list(sender);
             case "end" -> end(sender, args);
             case "reload" -> reload(sender);
-            case "maxbet" -> maxBet(sender, args);
             case "on" -> setAccepting(sender, true);
             case "off" -> setAccepting(sender, false);
             default -> help(sender);
@@ -41,28 +40,22 @@ public final class HbCommand implements TabExecutor {
 
     // ── 全員 ──
 
-    /** /hb start [金額] */
-    private void start(CommandSender sender, String[] args) {
+    private void start(CommandSender sender) {
         Player p = requirePlayer(sender);
         if (p == null || !canRecruit(p)) return;
-        Long bet = parseBet(p, args.length >= 2 ? args[1] : null);
-        if (bet == null) return;
-        plugin.games().recruit(p, null, bet);
+        plugin.games().recruit(p, null);
     }
 
-    /** /hb invite <player> [金額] */
     private void invite(CommandSender sender, String[] args) {
         Player p = requirePlayer(sender);
         if (p == null) return;
-        if (args.length < 2) { send(sender, "§c使い方: /hb invite <プレイヤー> [金額]"); return; }
+        if (args.length < 2) { send(sender, "§c使い方: /hb invite <プレイヤー>"); return; }
         if (!canRecruit(p)) return;
         Player target = Bukkit.getPlayerExact(args[1]);
         if (target == null) { send(sender, "§cそのプレイヤーはオンラインではありません。"); return; }
         if (target.equals(p)) { send(sender, "§c自分は招待できません。"); return; }
         if (plugin.games().gameOf(target.getUniqueId()) != null) { send(sender, "§c" + target.getName() + " はゲーム中です。"); return; }
-        Long bet = parseBet(p, args.length >= 3 ? args[2] : null);
-        if (bet == null) return;
-        plugin.games().recruit(p, target, bet);
+        plugin.games().recruit(p, target);
     }
 
     private void join(CommandSender sender, String[] args) {
@@ -88,7 +81,7 @@ public final class HbCommand implements TabExecutor {
         send(sender, "§f参加できる募集（" + list.size() + "件）:");
         for (GameManager.Recruit r : list) {
             String kind = r.target() == null ? "§7全体" : "§d招待";
-            Component line = Items.text(" §e" + r.hostName() + " " + kind + " " + GameManager.betLabel(r.bet()) + " §7（残り" + GameManager.secondsLeft(r) + "秒） ")
+            Component line = Items.text(" §e" + r.hostName() + " " + kind + " §7（残り" + GameManager.secondsLeft(r) + "秒） ")
                     .append(GameManager.joinButton(r.hostName()));
             p.sendMessage(line);
         }
@@ -110,26 +103,7 @@ public final class HbCommand implements TabExecutor {
         if (!isAdmin(sender)) return;
         plugin.loadSettings();
         send(sender, "§aconfig.yml を再読み込みしました（手番 " + plugin.turnSeconds() + "秒 / 募集 " + plugin.recruitSeconds()
-                + "秒 / 最高賭け金 " + Bank.yen(plugin.maxBet()) + " / " + (plugin.accepting() ? "受付中" : "停止中") + "）。");
-    }
-
-    /** /hb maxbet [金額]：省略すると今の値を表示 */
-    private void maxBet(CommandSender sender, String[] args) {
-        if (!isAdmin(sender)) return;
-        if (args.length < 2) {
-            send(sender, "§f現在の最高賭け金: §6" + Bank.yen(plugin.maxBet()) + " §7（変更: /hb maxbet <金額>）");
-            return;
-        }
-        long value;
-        try {
-            value = Long.parseLong(args[1]);
-        } catch (NumberFormatException e) {
-            send(sender, "§c金額は0以上の整数で指定してください。");
-            return;
-        }
-        if (value < 0) { send(sender, "§c金額は0以上の整数で指定してください。"); return; }
-        plugin.setMaxBet(value);
-        send(sender, "§a最高賭け金を §6" + Bank.yen(value) + " §aに変更しました（出ている募集・進行中のゲームはそのまま）。");
+                + "秒 / 時間切れ " + plugin.timeoutLimit() + "回で負け / " + (plugin.accepting() ? "受付中" : "停止中") + "）。");
     }
 
     /** /hb on・/hb off */
@@ -151,16 +125,14 @@ public final class HbCommand implements TabExecutor {
 
     private void help(CommandSender sender) {
         send(sender, "§fコマンド一覧:");
-        sender.sendMessage(Items.text(" §e/hb start [金額] §7- 全体向けに募集する（金額を省略すると0円）"));
-        sender.sendMessage(Items.text(" §e/hb invite <player> [金額] §7- 特定の人向けに募集する"));
+        sender.sendMessage(Items.text(" §e/hb start §7- 全体向けに募集する"));
+        sender.sendMessage(Items.text(" §e/hb invite <player> §7- 特定の人向けに募集する"));
         sender.sendMessage(Items.text(" §e/hb join <player> §7- プレイヤーの募集に参加する"));
         sender.sendMessage(Items.text(" §e/hb open §7- 参加中のゲーム画面を開く"));
         sender.sendMessage(Items.text(" §e/hb list §7- 募集中のプレイヤーを表示する"));
         sender.sendMessage(Items.text(" §e/hb help §7- コマンド一覧を表示する"));
-        sender.sendMessage(Items.text(" §7賭け金は2人から預かり、勝った人が2人分を受け取ります（0〜" + Bank.yen(plugin.maxBet()) + "）。"));
         if (sender.hasPermission(ADMIN)) {
-            sender.sendMessage(Items.text(" §c/hb end <player> §7- そのプレイヤーのゲームを強制終了する（賭け金は返金）"));
-            sender.sendMessage(Items.text(" §c/hb maxbet <金額> §7- 最高賭け金を変更する"));
+            sender.sendMessage(Items.text(" §c/hb end <player> §7- そのプレイヤーのゲームを強制終了する"));
             sender.sendMessage(Items.text(" §c/hb on §7- ゲームを開始できるようにする"));
             sender.sendMessage(Items.text(" §c/hb off §7- ゲームを停止する（進行中のゲームは終了し、新しい募集もできなくなる）"));
             sender.sendMessage(Items.text(" §c/hb reload §7- config.yml を再読み込みする"));
@@ -168,29 +140,6 @@ public final class HbCommand implements TabExecutor {
     }
 
     // ── 補助 ──
-
-    /**
-     * 賭け金を読む。省略なら0。範囲外・所持金不足・経済プラグインなしならメッセージを出して null
-     */
-    private Long parseBet(Player p, String arg) {
-        if (arg == null) return 0L;
-        long bet;
-        try {
-            bet = Long.parseLong(arg);
-        } catch (NumberFormatException e) {
-            send(p, "§c金額は整数で指定してください（0〜" + Bank.yen(plugin.maxBet()) + "）。");
-            return null;
-        }
-        if (bet < 0 || bet > plugin.maxBet()) {
-            send(p, "§c金額は 0〜" + Bank.yen(plugin.maxBet()) + " で指定してください。");
-            return null;
-        }
-        if (bet > 0) {
-            if (!plugin.bank().available()) { send(p, "§c経済プラグインが見つからないため、賭け金は指定できません。"); return null; }
-            if (!plugin.bank().has(p, bet)) { send(p, "§c所持金が足りません（賭け金 " + Bank.yen(bet) + "）。"); return null; }
-        }
-        return bet;
-    }
 
     private Player requirePlayer(CommandSender sender) {
         if (sender instanceof Player p) return p;
@@ -222,21 +171,14 @@ public final class HbCommand implements TabExecutor {
         String sub = args.length >= 1 ? args[0].toLowerCase(Locale.ROOT) : "";
         boolean admin = sender.hasPermission(ADMIN);
         if (args.length == 1) {
-            List<String> subs = new ArrayList<>(List.of("start", "invite", "join", "open", "list", "help"));
-            if (admin) subs.addAll(List.of("end", "maxbet", "on", "off", "reload"));
-            out.addAll(subs);
+            out.addAll(List.of("start", "invite", "join", "open", "list", "help"));
+            if (admin) out.addAll(List.of("end", "on", "off", "reload"));
         } else if (args.length == 2) {
             if (sub.equals("join") && sender instanceof Player p) {
                 for (GameManager.Recruit r : plugin.games().joinableFor(p.getUniqueId())) out.add(r.hostName());
             } else if (sub.equals("invite") || (sub.equals("end") && admin)) {
                 for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
-            } else if (sub.equals("start")) {
-                out.add("0");
-            } else if (sub.equals("maxbet") && admin) {
-                out.add(String.valueOf(plugin.maxBet()));
             }
-        } else if (args.length == 3 && sub.equals("invite")) {
-            out.add("0");
         }
         String last = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
         out.removeIf(s -> !s.toLowerCase(Locale.ROOT).startsWith(last));

@@ -23,10 +23,7 @@ if (Test-Path $classes) { Remove-Item -Recurse -Force $classes }
 New-Item -ItemType Directory -Force $classes, "$build\libs" | Out-Null
 
 # クラスパスとソース一覧は引数ファイルで渡す（コマンドラインの長さ制限対策）
-# Vault API はテストサーバーの plugins\Vault.jar から読む（jar には同梱しない）
-$vault = Get-ChildItem "$Server\plugins" -Filter 'Vault*.jar' | Select-Object -First 1
-if (-not $vault) { throw "Vault の jar が $Server\plugins に見つかりません" }
-$cp = ((Get-ChildItem "$Server\libraries" -Recurse -Filter *.jar | ForEach-Object { $_.FullName }) + $vault.FullName) -join ';'
+$cp = (Get-ChildItem "$Server\libraries" -Recurse -Filter *.jar | ForEach-Object { $_.FullName }) -join ';'
 $sources = Get-ChildItem "$root\src\main\java" -Recurse -Filter *.java | ForEach-Object { '"' + ($_.FullName -replace '\\', '/') + '"' }
 $argFile = "$build\javac.args"
 @('-encoding', 'UTF-8', '--release', '21', '-proc:none', '-d', ('"' + ($classes -replace '\\', '/') + '"'),

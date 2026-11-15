@@ -1,9 +1,8 @@
 name: HitAndBlow
-version: 1.1.1
+version: 1.2.0
 main: dev.hitandblow.HitAndBlowPlugin
 api-version: '1.21'
 description: 2人対戦のヒット＆ブロー（ラージチェストGUI）
-softdepend: [Vault, Essentials]   # 賭け金に使う。無くても賭け金0なら遊べる
 commands:
   hb:
     description: ヒット＆ブロー
@@ -11,5 +10,5 @@ commands:
     aliases: [hitblow]
 permissions:
   hitandblow.admin:
-    description: /hb end・maxbet・on・off・reload
+    description: /hb end・on・off・reload
     default: op

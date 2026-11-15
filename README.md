@@ -21,8 +21,6 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -Deploy   # さらにテス�
 | `Game.java` | 1試合の進行（手番・タイマー・判定・終了）と GUI 描画。スロット配置の図あり |
 | `GameView.java` | プレイヤー1人分の GUI（InventoryHolder） |
 | `GameListener.java` | GUI クリック、ドラッグ禁止、ログアウト時の放棄負け |
-| `Bank.java` | Vault 経由のお金の出し入れ（賭け金の預かり・配当・返金） |
-| `Ledger.java` | 未精算の記録（`unsettled/` に試合開始時に書き、精算完了で消す） |
 | `Judge.java` | ヒット・ブローの判定（色の重複あり） |
 | `HbColor.java` | 6色の定義（ブロック、ガラス、チャットの色） |
 | `Items.java` / `Msg.java` | アイテム生成とメッセージ用の部品 |
