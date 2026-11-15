@@ -1,0 +1,7 @@
+# ヒット＆ブロー 設定
+# 変更後は /hb reload（進行中のゲームには次の手番から反映）
+
+turn-seconds: 30      # 手番の制限時間（秒）。1〜64 推奨（時計の個数が最大64のため）
+recruit-seconds: 60   # 募集の期限（秒）
+max-bet: 100000       # 賭け金の上限（円）。/hb maxbet <金額> でも変更できる
+enabled: true         # false だと新しい募集ができない。/hb on・/hb off でも切り替えられる
